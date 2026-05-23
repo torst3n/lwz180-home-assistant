@@ -1,0 +1,22 @@
+# Secrets & Credentials
+secrets.h
+
+# Local Archive (Not published to GitHub)
+archive/
+
+# OS / Editor Files
+.DS_Store
+Thumbs.db
+*.swp
+*.bak
+*~
+
+# AI Agent Specific Folders
+.claude/
+AGENTS.md
+task.md
+implementation_plan.md
+walkthrough.md
+*.png
+*.jpg
+*.pdf
