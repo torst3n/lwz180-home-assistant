@@ -60,10 +60,10 @@ Connect the **LWZ terminals** to **Side 1** of your **ISO1540** isolator:
 
 | LWZ Terminal Block Pin | Signal | ISO1540 Board Pin (Side 1) | Wire Purpose |
 | :--- | :--- | :--- | :--- |
-| **Klemme 1** *(or 2)* | **SCL** | **SCL1** *(or C1)* | I2C Clock Line |
-| **Klemme 3** *(or 4)* | **GND** | **GND1** *(or G1)* | Isolated Ground Reference |
-| **Klemme 5** *(or 6)* | **+5V DC**| **VCC1** *(or V1)* | Isolated 5V Bus Power |
-| **Klemme 7** *(or 8)* | **SDA** | **SDA1** *(or D1)* | I2C Data Line |
+| **Klemme 1** | **SCL** | **SCL1** *(or C1)* | I2C Clock Line |
+| **Klemme 3** | **GND** | **GND1** *(or G1)* | Isolated Ground Reference |
+| **Klemme 5** | **+5V DC**| **VCC1** *(or V1)* | Isolated 5V Bus Power |
+| **Klemme 7** | **SDA** | **SDA1** *(or D1)* | I2C Data Line |
 
 ---
 

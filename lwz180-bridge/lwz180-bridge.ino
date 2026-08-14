@@ -295,9 +295,9 @@ void receiveEvent(int howMany) {
       stat_changed |= CHANGED_SCHEDULED;
     }
 
+    int8_t level = 0;
     if ((data[20] & 0x04) || (bool)(data[19] & 0x10)) {
       byte digit = data[8];
-      int8_t level;
       if (digit == DIGIT_1) {
         level = 1;
       } else if (digit == DIGIT_2) {
@@ -307,10 +307,14 @@ void receiveEvent(int howMany) {
       } else {
         level = 0;
       }
-      if (level != stat.level) {
-        stat.level = level;
-        stat_changed |= CHANGED_LEVEL;
-      }
+    } else {
+      // No fan digit active on display -> Unit is in Standby / Level 0
+      level = 0;
+    }
+
+    if (level != stat.level) {
+      stat.level = level;
+      stat_changed |= CHANGED_LEVEL;
     }
   }
 }

@@ -59,6 +59,7 @@ HardwareSerial BridgeSerial(BRIDGE_UART_PORT);
 String serialLine;
 uint32_t lastAvailabilityPublish = 0;
 uint32_t lastMqttAttempt = 0;
+uint32_t lastWifiAttempt = 0;
 long nextCommandId = 1;
 
 struct State {
@@ -376,18 +377,27 @@ void setup() {
 }
 
 void loop() {
+  uint32_t now = millis();
+
   // If Wi-Fi is connected, run MQTT tasks asynchronously
   if (WiFi.status() == WL_CONNECTED) {
     ensureMqttConnected();
     if (mqttClient.connected()) {
       mqttClient.loop();
     }
+  } else {
+    // Non-blocking WiFi reconnect fallback
+    if (now - lastWifiAttempt > 10000) {
+      lastWifiAttempt = now;
+      Serial.println("[WIFI] Disconnected. Reconnecting...");
+      WiFi.disconnect();
+      WiFi.reconnect();
+    }
   }
 
   // Always parse data from the bridge to prevent serial RX buffer overflow
   readBridgeSerial();
 
-  uint32_t now = millis();
   if (WiFi.status() == WL_CONNECTED && mqttClient.connected()) {
     if (now - lastAvailabilityPublish > 30000) {
       lastAvailabilityPublish = now;
