@@ -47,6 +47,8 @@ Die Stiebel Eltron LWZ 180 führt auf Klemme 1–8 eigene Busspannungen. Um die 
 
 ## 3. Topologischer Layout-Plan (Draufsicht Platine)
 
+![Perfboard Layout](perfboard_layout.svg)
+
 Ein bewährtes, aufgeräumtes Layout auf einer Platine mit ca. 28 × 36 Löchern:
 
 ```

@@ -1,0 +1,478 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1250 960" width="100%" height="100%" style="background-color: #12151a; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <defs>
+    <!-- Perfboard Copper Ring Pattern -->
+    <pattern id="perfgrid" width="22" height="22" patternUnits="userSpaceOnUse">
+      <circle cx="11" cy="11" r="3.2" fill="#232933" stroke="#3b4454" stroke-width="0.8"/>
+      <circle cx="11" cy="11" r="1.3" fill="#12151a"/>
+    </pattern>
+
+    <!-- Drop Shadows -->
+    <filter id="shadow" x="-5%" y="-5%" width="115%" height="115%">
+      <feDropShadow dx="3" dy="5" stdDeviation="5" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+    <filter id="glow-gold" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="0" stdDeviation="3" flood-color="#ffb74d" flood-opacity="0.8"/>
+    </filter>
+  </defs>
+
+  <!-- Base Perfboard Background -->
+  <rect x="25" y="25" width="1200" height="910" rx="14" fill="#181c24" stroke="#2c3442" stroke-width="3" filter="url(#shadow)"/>
+  <rect x="35" y="35" width="1180" height="890" fill="url(#perfgrid)"/>
+
+  <!-- Title & Metadata -->
+  <text x="50" y="65" font-size="22" font-weight="700" fill="#ffffff" letter-spacing="0.5">Stiebel Eltron LWZ 180 Bridge — Perfboard Layout</text>
+  <text x="50" y="88" font-size="13" font-weight="500" fill="#78909c">Vibrationsfester 2,54 mm Lochraster-Lötplan mit Buchsenleisten &amp; galvanischer Trennung</text>
+
+  <!-- ============================================================== -->
+  <!-- 1. GALVANIC ISOLATION BARRIER                                  -->
+  <!-- ============================================================== -->
+  <rect x="315" y="110" width="8" height="420" rx="4" fill="#d32f2f" opacity="0.3"/>
+  <line x1="319" y1="110" x2="319" y2="530" stroke="#f44336" stroke-width="2.5" stroke-dasharray="6,5"/>
+  
+  <rect x="230" y="475" width="178" height="26" rx="4" fill="#2d1214" stroke="#e53935" stroke-width="1.2"/>
+  <text x="319" y="492" font-size="11" font-weight="700" fill="#ff8a80" text-anchor="middle" letter-spacing="0.5">GALVANISCHE TRENNUNG</text>
+  <text x="319" y="515" font-size="10" font-weight="600" fill="#ef9a9a" text-anchor="middle">Min. 5 mm Freiraum (keine Leiterbahnen!)</text>
+
+  <!-- ============================================================== -->
+  <!-- 2. SCREW TERMINAL BLOCK (LWZ 180 CONNECTOR)                    -->
+  <!-- ============================================================== -->
+  <g transform="translate(60, 130)" filter="url(#shadow)">
+    <!-- Terminal Body -->
+    <rect x="0" y="0" width="220" height="95" rx="6" fill="#1b5e20" stroke="#2e7d32" stroke-width="2"/>
+    <rect x="10" y="10" width="200" height="32" rx="4" fill="#0d3311"/>
+    <text x="110" y="30" font-size="12" font-weight="700" fill="#a5d6a7" text-anchor="middle">PRINT-SCHRAUBKLEMME (X1)</text>
+
+    <!-- 4 Terminal Screws -->
+    <!-- Pin 1 -->
+    <circle cx="35" cy="65" r="14" fill="#37474f" stroke="#78909c" stroke-width="1.5"/>
+    <line x1="28" y1="65" x2="42" y2="65" stroke="#b0bec5" stroke-width="2.5"/>
+    <text x="35" y="90" font-size="9" font-weight="700" fill="#cfd8dc" text-anchor="middle">1: SCL</text>
+
+    <!-- Pin 2 -->
+    <circle cx="85" cy="65" r="14" fill="#37474f" stroke="#78909c" stroke-width="1.5"/>
+    <line x1="78" y1="65" x2="92" y2="65" stroke="#b0bec5" stroke-width="2.5"/>
+    <text x="85" y="90" font-size="9" font-weight="700" fill="#cfd8dc" text-anchor="middle">2: GND</text>
+
+    <!-- Pin 3 -->
+    <circle cx="135" cy="65" r="14" fill="#37474f" stroke="#78909c" stroke-width="1.5"/>
+    <line x1="128" y1="65" x2="142" y2="65" stroke="#b0bec5" stroke-width="2.5"/>
+    <text x="135" y="90" font-size="9" font-weight="700" fill="#cfd8dc" text-anchor="middle">3: +5V</text>
+
+    <!-- Pin 4 -->
+    <circle cx="185" cy="65" r="14" fill="#37474f" stroke="#78909c" stroke-width="1.5"/>
+    <line x1="178" y1="65" x2="192" y2="65" stroke="#b0bec5" stroke-width="2.5"/>
+    <text x="185" y="90" font-size="9" font-weight="700" fill="#cfd8dc" text-anchor="middle">4: SDA</text>
+  </g>
+
+  <!-- ============================================================== -->
+  <!-- 3. ISO1540 I2C ISOLATOR BREAKOUT MODULE                       -->
+  <!-- ============================================================== -->
+  <g transform="translate(60, 270)" filter="url(#shadow)">
+    <!-- Board Body -->
+    <rect x="0" y="0" width="220" height="150" rx="6" fill="#1a237e" stroke="#303f9f" stroke-width="2"/>
+    <text x="110" y="24" font-size="12" font-weight="700" fill="#c5cae9" text-anchor="middle">ISO1540 ISOLATOR</text>
+    <text x="110" y="40" font-size="9" fill="#9fa8da" text-anchor="middle">Galvanischer I2C-Trenner</text>
+
+    <!-- IC representation in center -->
+    <rect x="85" y="55" width="50" height="50" rx="3" fill="#0c1033" stroke="#5c6bc0" stroke-width="1"/>
+    <circle cx="95" cy="65" r="2.5" fill="#7986cb"/>
+    <text x="110" y="83" font-size="8" font-weight="700" fill="#9fa8da" text-anchor="middle">ISO1540</text>
+
+    <!-- Side 1 Header (Isolated / Left) -->
+    <text x="12" y="58" font-size="9" font-weight="700" fill="#ffb74d">SIDE 1 (LWZ)</text>
+    
+    <!-- VCC1 (Pin 35, 75) -->
+    <circle cx="25" cy="72" r="5.5" fill="#212121" stroke="#ffb74d" stroke-width="1.5"/>
+    <text x="36" y="75" font-size="9" font-weight="600" fill="#ffe082">VCC1</text>
+
+    <!-- GND1 -->
+    <circle cx="25" cy="92" r="5.5" fill="#212121" stroke="#ffb74d" stroke-width="1.5"/>
+    <text x="36" y="95" font-size="9" font-weight="600" fill="#ffe082">GND1</text>
+
+    <!-- SDA1 -->
+    <circle cx="25" cy="112" r="5.5" fill="#212121" stroke="#ffb74d" stroke-width="1.5"/>
+    <text x="36" y="115" font-size="9" font-weight="600" fill="#ffe082">SDA1</text>
+
+    <!-- SCL1 -->
+    <circle cx="25" cy="132" r="5.5" fill="#212121" stroke="#ffb74d" stroke-width="1.5"/>
+    <text x="36" y="135" font-size="9" font-weight="600" fill="#ffe082">SCL1</text>
+
+    <!-- Side 2 Header (Local / Right) -->
+    <text x="208" y="58" font-size="9" font-weight="700" fill="#81c784" text-anchor="end">SIDE 2 (LOCAL)</text>
+
+    <!-- VCC2 -->
+    <circle cx="195" cy="72" r="5.5" fill="#212121" stroke="#ef5350" stroke-width="1.5"/>
+    <text x="184" y="75" font-size="9" font-weight="600" fill="#ef5350" text-anchor="end">VCC2</text>
+
+    <!-- GND2 -->
+    <circle cx="195" cy="92" r="5.5" fill="#212121" stroke="#90a4ae" stroke-width="1.5"/>
+    <text x="184" y="95" font-size="9" font-weight="600" fill="#cfd8dc" text-anchor="end">GND2</text>
+
+    <!-- SDA2 -->
+    <circle cx="195" cy="112" r="5.5" fill="#212121" stroke="#29b6f6" stroke-width="1.5"/>
+    <text x="184" y="115" font-size="9" font-weight="600" fill="#81d4fa" text-anchor="end">SDA2</text>
+
+    <!-- SCL2 -->
+    <circle cx="195" cy="132" r="5.5" fill="#212121" stroke="#00e676" stroke-width="1.5"/>
+    <text x="184" y="135" font-size="9" font-weight="600" fill="#69f0ae" text-anchor="end">SCL2</text>
+  </g>
+
+  <!-- ============================================================== -->
+  <!-- 4. ARDUINO MICRO MODULE                                        -->
+  <!-- ============================================================== -->
+  <g transform="translate(450, 110)" filter="url(#shadow)">
+    <!-- Board Body -->
+    <rect x="0" y="0" width="730" height="200" rx="8" fill="#006064" stroke="#00838f" stroke-width="2"/>
+    <text x="365" y="28" font-size="14" font-weight="700" fill="#b2ebf2" text-anchor="middle" letter-spacing="0.5">ARDUINO MICRO (ATmega32U4) — BUCHSENLEISTEN-SOCKEL</text>
+    
+    <!-- USB Connector on Right -->
+    <rect x="705" y="75" width="35" height="50" rx="3" fill="#cfd8dc" stroke="#78909c" stroke-width="1.5"/>
+    <text x="722" y="105" font-size="8" font-weight="700" fill="#37474f" text-anchor="middle" transform="rotate(90 722 105)">USB</text>
+
+    <!-- TOP HEADER ROW (Pins 1-17) -->
+    <!-- Pins: MOSI, SS, TX(D1), RX(D0), RESET, GND, D2(SDA), D3(SCL), D4, D5, D6, D7, D8, D9, D10, D11, D12 -->
+    <g transform="translate(30, 45)">
+      <!-- TX (Pin 1) -->
+      <circle cx="80" cy="0" r="5" fill="#212121" stroke="#ffb300" stroke-width="1.5"/>
+      <text x="80" y="-10" font-size="8" font-weight="700" fill="#ffd54f" text-anchor="middle">TX (1)</text>
+
+      <!-- RX (Pin 0) -->
+      <circle cx="120" cy="0" r="5" fill="#212121" stroke="#00e5ff" stroke-width="1.5"/>
+      <text x="120" y="-10" font-size="8" font-weight="700" fill="#18ffff" text-anchor="middle">RX (0)</text>
+
+      <!-- RESET -->
+      <circle cx="160" cy="0" r="5" fill="#212121" stroke="#ab47bc" stroke-width="1.5"/>
+      <text x="160" y="-10" font-size="8" font-weight="700" fill="#ce93d8" text-anchor="middle">RST</text>
+
+      <!-- GND -->
+      <circle cx="200" cy="0" r="5" fill="#212121" stroke="#90a4ae" stroke-width="1.5"/>
+      <text x="200" y="-10" font-size="8" font-weight="700" fill="#cfd8dc" text-anchor="middle">GND</text>
+
+      <!-- D2 (SDA) -->
+      <circle cx="240" cy="0" r="5" fill="#212121" stroke="#29b6f6" stroke-width="1.5"/>
+      <text x="240" y="-10" font-size="8" font-weight="700" fill="#81d4fa" text-anchor="middle">D2 (SDA)</text>
+
+      <!-- D3 (SCL) -->
+      <circle cx="280" cy="0" r="5" fill="#212121" stroke="#00e676" stroke-width="1.5"/>
+      <text x="280" y="-10" font-size="8" font-weight="700" fill="#69f0ae" text-anchor="middle">D3 (SCL)</text>
+
+      <!-- Unused Top Pins (dimmed) -->
+      <circle cx="0" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="40" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="320" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="360" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="400" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="440" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="480" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="520" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="560" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="600" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="640" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+    </g>
+
+    <!-- BOTTOM HEADER ROW (Pins 18-34) -->
+    <!-- Pins: D12... Vin, NC, 5V... -->
+    <g transform="translate(30, 165)">
+      <!-- 5V Power IN -->
+      <circle cx="80" cy="0" r="5.5" fill="#212121" stroke="#ef5350" stroke-width="1.5"/>
+      <text x="80" y="20" font-size="9" font-weight="700" fill="#ff7961" text-anchor="middle">+5V</text>
+
+      <!-- Unused Bottom Pins -->
+      <circle cx="0" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="40" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="120" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="160" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="200" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="240" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="280" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="320" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="360" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="400" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="440" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="480" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="520" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="560" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="600" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+      <circle cx="640" cy="0" r="4" fill="#1a3338" stroke="#37474f"/>
+    </g>
+  </g>
+
+  <!-- ============================================================== -->
+  <!-- 5. 4-CHANNEL BI-DIRECTIONAL LEVEL SHIFTER                       -->
+  <!-- ============================================================== -->
+  <g transform="translate(480, 360)" filter="url(#shadow)">
+    <!-- Board Body -->
+    <rect x="0" y="0" width="310" height="150" rx="6" fill="#4a148c" stroke="#6a1b9a" stroke-width="2"/>
+    <text x="155" y="24" font-size="12" font-weight="700" fill="#e1bee7" text-anchor="middle">4-KANAL LEVEL SHIFTER</text>
+    <text x="155" y="38" font-size="9" fill="#ba68c8" text-anchor="middle">BSS138 3.3V &lt;==&gt; 5V Pegelwandler</text>
+
+    <!-- Top Row: High Voltage Side (5V) -->
+    <g transform="translate(25, 60)">
+      <!-- HV -->
+      <circle cx="0" cy="0" r="5" fill="#212121" stroke="#ef5350" stroke-width="1.5"/>
+      <text x="0" y="-10" font-size="8" font-weight="700" fill="#ef5350" text-anchor="middle">HV (5V)</text>
+
+      <!-- GND -->
+      <circle cx="50" cy="0" r="5" fill="#212121" stroke="#90a4ae" stroke-width="1.5"/>
+      <text x="50" y="-10" font-size="8" font-weight="700" fill="#cfd8dc" text-anchor="middle">GND</text>
+
+      <!-- HV1 -->
+      <circle cx="100" cy="0" r="5" fill="#212121" stroke="#ffb300" stroke-width="1.5"/>
+      <text x="100" y="-10" font-size="8" font-weight="700" fill="#ffd54f" text-anchor="middle">HV1</text>
+
+      <!-- HV2 -->
+      <circle cx="150" cy="0" r="5" fill="#212121" stroke="#00e5ff" stroke-width="1.5"/>
+      <text x="150" y="-10" font-size="8" font-weight="700" fill="#18ffff" text-anchor="middle">HV2</text>
+
+      <!-- HV3 -->
+      <circle cx="200" cy="0" r="5" fill="#212121" stroke="#ab47bc" stroke-width="1.5"/>
+      <text x="200" y="-10" font-size="8" font-weight="700" fill="#ce93d8" text-anchor="middle">HV3</text>
+
+      <!-- HV4 (Spare) -->
+      <circle cx="250" cy="0" r="4" fill="#2a1040" stroke="#7b1fa2"/>
+      <text x="250" y="-10" font-size="7" fill="#9c27b0" text-anchor="middle">HV4</text>
+    </g>
+
+    <!-- Bottom Row: Low Voltage Side (3.3V) -->
+    <g transform="translate(25, 125)">
+      <!-- LV -->
+      <circle cx="0" cy="0" r="5" fill="#212121" stroke="#ff9800" stroke-width="1.5"/>
+      <text x="0" y="18" font-size="8" font-weight="700" fill="#ffb74d" text-anchor="middle">LV (3V3)</text>
+
+      <!-- GND -->
+      <circle cx="50" cy="0" r="5" fill="#212121" stroke="#90a4ae" stroke-width="1.5"/>
+      <text x="50" y="18" font-size="8" font-weight="700" fill="#cfd8dc" text-anchor="middle">GND</text>
+
+      <!-- LV1 -->
+      <circle cx="100" cy="0" r="5" fill="#212121" stroke="#ffb300" stroke-width="1.5"/>
+      <text x="100" y="18" font-size="8" font-weight="700" fill="#ffd54f" text-anchor="middle">LV1</text>
+
+      <!-- LV2 -->
+      <circle cx="150" cy="0" r="5" fill="#212121" stroke="#00e5ff" stroke-width="1.5"/>
+      <text x="150" y="18" font-size="8" font-weight="700" fill="#18ffff" text-anchor="middle">LV2</text>
+
+      <!-- LV3 -->
+      <circle cx="200" cy="0" r="5" fill="#212121" stroke="#ab47bc" stroke-width="1.5"/>
+      <text x="200" y="18" font-size="8" font-weight="700" fill="#ce93d8" text-anchor="middle">LV3</text>
+
+      <!-- LV4 (Spare) -->
+      <circle cx="250" cy="0" r="4" fill="#2a1040" stroke="#7b1fa2"/>
+      <text x="250" y="18" font-size="7" fill="#9c27b0" text-anchor="middle">LV4</text>
+    </g>
+  </g>
+
+  <!-- ============================================================== -->
+  <!-- 6. ESP32 DEVKIT MODULE                                         -->
+  <!-- ============================================================== -->
+  <g transform="translate(380, 580)" filter="url(#shadow)">
+    <!-- Board Body -->
+    <rect x="0" y="0" width="740" height="230" rx="8" fill="#1e2430" stroke="#2e384d" stroke-width="2"/>
+    <text x="370" y="28" font-size="14" font-weight="700" fill="#eceff1" text-anchor="middle" letter-spacing="0.5">ESP32 DEVKIT MODUL — BUCHSENLEISTEN-SOCKEL</text>
+    <text x="370" y="44" font-size="10" fill="#90a4ae" text-anchor="middle">WiFi · MQTT · Web Dashboard · Telnet · ArduinoOTA</text>
+
+    <!-- Metal ESP32 Shield Box -->
+    <rect x="180" y="65" width="140" height="110" rx="4" fill="#263238" stroke="#455a64" stroke-width="1.5"/>
+    <text x="250" y="125" font-size="12" font-weight="700" fill="#78909c" text-anchor="middle">ESP-WROOM-32</text>
+
+    <!-- USB Connector at Bottom Edge -->
+    <rect x="345" y="205" width="50" height="35" rx="3" fill="#cfd8dc" stroke="#78909c" stroke-width="1.5"/>
+    <text x="370" y="228" font-size="9" font-weight="700" fill="#37474f" text-anchor="middle">USB-C / MICRO</text>
+
+    <!-- TOP ROW PINS OF ESP32 (D23 ... TX2, RX2, D4, GND, 3V3) -->
+    <g transform="translate(40, 50)">
+      <!-- GPIO 17 (TX2) -->
+      <circle cx="210" cy="0" r="5.5" fill="#212121" stroke="#00e5ff" stroke-width="1.5"/>
+      <text x="210" y="-10" font-size="9" font-weight="700" fill="#18ffff" text-anchor="middle">TX2 (17)</text>
+
+      <!-- GPIO 16 (RX2) -->
+      <circle cx="260" cy="0" r="5.5" fill="#212121" stroke="#ffb300" stroke-width="1.5"/>
+      <text x="260" y="-10" font-size="9" font-weight="700" fill="#ffd54f" text-anchor="middle">RX2 (16)</text>
+
+      <!-- GPIO 4 (HW Reset) -->
+      <circle cx="310" cy="0" r="5.5" fill="#212121" stroke="#ab47bc" stroke-width="1.5"/>
+      <text x="310" y="-10" font-size="9" font-weight="700" fill="#ce93d8" text-anchor="middle">GPIO 4</text>
+
+      <!-- GND (Top) -->
+      <circle cx="410" cy="0" r="5.5" fill="#212121" stroke="#90a4ae" stroke-width="1.5"/>
+      <text x="410" y="-10" font-size="9" font-weight="700" fill="#cfd8dc" text-anchor="middle">GND</text>
+
+      <!-- 3V3 Power OUT -->
+      <circle cx="460" cy="0" r="5.5" fill="#212121" stroke="#ff9800" stroke-width="1.5"/>
+      <text x="460" y="-10" font-size="9" font-weight="700" fill="#ffb74d" text-anchor="middle">3V3</text>
+
+      <!-- Unused Top Pins -->
+      <circle cx="0" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="35" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="70" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="105" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="140" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="175" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="360" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="510" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="560" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="610" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="660" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+    </g>
+
+    <!-- BOTTOM ROW PINS OF ESP32 (EN, VP, VN ... GND, VIN) -->
+    <g transform="translate(40, 195)">
+      <!-- VIN / 5V (USB Power Out/In) -->
+      <circle cx="660" cy="0" r="6" fill="#212121" stroke="#ef5350" stroke-width="2"/>
+      <text x="660" y="20" font-size="10" font-weight="700" fill="#ef5350" text-anchor="middle">VIN (5V)</text>
+
+      <!-- GND (Bottom) -->
+      <circle cx="610" cy="0" r="5.5" fill="#212121" stroke="#90a4ae" stroke-width="1.5"/>
+      <text x="610" y="20" font-size="9" font-weight="700" fill="#cfd8dc" text-anchor="middle">GND</text>
+
+      <!-- Other Bottom Pins -->
+      <circle cx="0" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="35" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="70" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="105" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="140" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="175" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="210" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="260" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="310" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="360" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="410" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="460" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="510" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+      <circle cx="560" cy="0" r="4" fill="#141821" stroke="#37474f"/>
+    </g>
+  </g>
+
+  <!-- ============================================================== -->
+  <!-- 7. WIRING TRACES (POINT-TO-POINT CONNECTIONS)                  -->
+  <!-- ============================================================== -->
+
+  <!-- GROUP A: ISOLATED STIEBEL ELTRON BUS (Side 1) -->
+  <!-- Screw Pin 1 (SCL) -> ISO1540 SCL1 (25, 132 in group = 85, 402) -->
+  <path d="M 95 195 L 95 240 L 70 240 L 70 402 L 85 402" fill="none" stroke="#ffb74d" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Screw Pin 2 (GND) -> ISO1540 GND1 (25, 92 = 85, 362) -->
+  <path d="M 145 195 L 145 220 L 75 220 L 75 362 L 85 362" fill="none" stroke="#78909c" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Screw Pin 3 (+5V) -> ISO1540 VCC1 (25, 72 = 85, 342) -->
+  <path d="M 195 195 L 195 210 L 80 210 L 80 342 L 85 342" fill="none" stroke="#e57373" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- Screw Pin 4 (SDA) -> ISO1540 SDA1 (25, 112 = 85, 382) -->
+  <path d="M 245 195 L 245 230 L 65 230 L 65 382 L 85 382" fill="none" stroke="#4fc3f7" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- GROUP D: LOCAL I2C BUS (ISO1540 Side 2 -> Arduino Micro D2/D3) -->
+  <!-- ISO1540 SDA2 (255, 382) -> Arduino D2 (450+30+240 = 720, 155) -->
+  <path d="M 255 382 L 340 382 L 340 250 L 720 250 L 720 155" fill="none" stroke="#29b6f6" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- ISO1540 SCL2 (255, 402) -> Arduino D3 (450+30+280 = 760, 155) -->
+  <path d="M 255 402 L 350 402 L 350 265 L 760 265 L 760 155" fill="none" stroke="#00e676" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- GROUP B: 5V POWER BUS (Red) -->
+  <!-- ESP32 VIN (380+40+660 = 1080, 775) -> Arduino 5V (450+30+80 = 560, 275) -->
+  <path d="M 1080 775 L 1150 775 L 1150 275 L 560 275" fill="none" stroke="#ef5350" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="1080" cy="775" r="4" fill="#ef5350"/>
+  <circle cx="560" cy="275" r="4" fill="#ef5350"/>
+
+  <!-- Branch to Level Shifter HV (480+25+0 = 505, 420) -->
+  <path d="M 505 420 L 505 320 L 1150 320" fill="none" stroke="#ef5350" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="505" cy="420" r="4" fill="#ef5350"/>
+  <circle cx="1150" cy="320" r="4" fill="#ef5350"/>
+
+  <!-- Branch to ISO1540 VCC2 (255, 342) -->
+  <path d="M 255 342 L 330 342 L 330 320 L 505 320" fill="none" stroke="#ef5350" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="255" cy="342" r="4" fill="#ef5350"/>
+  <circle cx="330" cy="320" r="3.5" fill="#ef5350"/>
+
+  <!-- GROUP B: 3.3V POWER (Orange) -->
+  <!-- ESP32 3V3 (380+40+460 = 880, 630) -> Level Shifter LV (480+25+0 = 505, 485) -->
+  <path d="M 880 630 L 880 540 L 460 540 L 460 485 L 505 485" fill="none" stroke="#ff9800" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="880" cy="630" r="4" fill="#ff9800"/>
+  <circle cx="505" cy="485" r="4" fill="#ff9800"/>
+
+  <!-- GROUP C: LOCAL GROUND (GND - Blue-Gray) -->
+  <!-- ESP32 GND (380+40+410 = 830, 630) -> Level Shifter GND LV (480+25+50 = 555, 485) -->
+  <path d="M 830 630 L 830 550 L 555 550 L 555 485" fill="none" stroke="#90a4ae" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="830" cy="630" r="4" fill="#90a4ae"/>
+  <circle cx="555" cy="485" r="4" fill="#90a4ae"/>
+
+  <!-- Level Shifter GND HV (555, 420) -> Arduino GND (450+30+200 = 680, 155) -->
+  <path d="M 555 420 L 555 220 L 680 220 L 680 155" fill="none" stroke="#90a4ae" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="555" cy="420" r="4" fill="#90a4ae"/>
+  <circle cx="680" cy="155" r="4" fill="#90a4ae"/>
+
+  <!-- Branch to ISO1540 GND2 (255, 362) -->
+  <path d="M 255 362 L 320 362 L 320 220 L 555 220" fill="none" stroke="#90a4ae" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="255" cy="362" r="4" fill="#90a4ae"/>
+  <circle cx="320" cy="220" r="3.5" fill="#90a4ae"/>
+
+  <!-- GROUP E: UART CH1 (Arduino TX -> ESP32 RX2) (Yellow/Amber) -->
+  <!-- Arduino TX (450+30+80 = 560, 155) -> Level Shifter HV1 (480+25+100 = 605, 420) -->
+  <path d="M 560 155 L 560 180 L 605 180 L 605 420" fill="none" stroke="#ffb300" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="560" cy="155" r="4" fill="#ffb300"/>
+  <circle cx="605" cy="420" r="4" fill="#ffb300"/>
+
+  <!-- Level Shifter LV1 (605, 485) -> ESP32 RX2/Pin16 (380+40+260 = 680, 630) -->
+  <path d="M 605 485 L 605 520 L 680 520 L 680 630" fill="none" stroke="#ffb300" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="605" cy="485" r="4" fill="#ffb300"/>
+  <circle cx="680" cy="630" r="4" fill="#ffb300"/>
+
+  <!-- GROUP E: UART CH2 (ESP32 TX2 -> Arduino RX) (Cyan/Aqua) -->
+  <!-- ESP32 TX2/Pin17 (380+40+210 = 630, 630) -> Level Shifter LV2 (480+25+150 = 655, 485) -->
+  <path d="M 630 630 L 630 530 L 655 530 L 655 485" fill="none" stroke="#00e5ff" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="630" cy="630" r="4" fill="#00e5ff"/>
+  <circle cx="655" cy="485" r="4" fill="#00e5ff"/>
+
+  <!-- Level Shifter HV2 (655, 420) -> Arduino RX (450+30+120 = 600, 155) -->
+  <path d="M 655 420 L 655 195 L 600 195 L 600 155" fill="none" stroke="#00e5ff" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="655" cy="420" r="4" fill="#00e5ff"/>
+  <circle cx="600" cy="155" r="4" fill="#00e5ff"/>
+
+  <!-- GROUP F: HARDWARE RESET CH3 (Purple) -->
+  <!-- ESP32 GPIO 4 (380+40+310 = 730, 630) -> Level Shifter LV3 (480+25+200 = 705, 485) -->
+  <path d="M 730 630 L 730 510 L 705 510 L 705 485" fill="none" stroke="#ab47bc" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="730" cy="630" r="3.5" fill="#ab47bc"/>
+  <circle cx="705" cy="485" r="3.5" fill="#ab47bc"/>
+
+  <!-- Level Shifter HV3 (705, 420) -> Arduino RESET (450+30+160 = 640, 155) -->
+  <path d="M 705 420 L 705 210 L 640 210 L 640 155" fill="none" stroke="#ab47bc" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="705" cy="420" r="3.5" fill="#ab47bc"/>
+  <circle cx="640" cy="155" r="3.5" fill="#ab47bc"/>
+
+  <!-- ============================================================== -->
+  <!-- 8. SIGNAL COLOR LEGEND                                         -->
+  <!-- ============================================================== -->
+  <g transform="translate(60, 480)" filter="url(#shadow)">
+    <rect x="0" y="0" width="220" height="240" rx="6" fill="#1e2430" stroke="#37474f" stroke-width="1.5"/>
+    <text x="15" y="24" font-size="12" font-weight="700" fill="#eceff1">LEITUNGS-LEGENDE</text>
+    <line x1="15" y1="32" x2="205" y2="32" stroke="#455a64" stroke-width="1"/>
+
+    <!-- Red: +5V Power -->
+    <line x1="20" y1="52" x2="50" y2="52" stroke="#ef5350" stroke-width="3.5"/>
+    <text x="60" y="56" font-size="11" font-weight="600" fill="#ffcdd2">+5V Hauptstrom (USB)</text>
+
+    <!-- Orange: +3.3V Power -->
+    <line x1="20" y1="78" x2="50" y2="78" stroke="#ff9800" stroke-width="3"/>
+    <text x="60" y="82" font-size="11" font-weight="600" fill="#ffe0b2">+3.3V Logikspannung</text>
+
+    <!-- Gray: Local GND -->
+    <line x1="20" y1="104" x2="50" y2="104" stroke="#90a4ae" stroke-width="3"/>
+    <text x="60" y="108" font-size="11" font-weight="600" fill="#cfd8dc">Gemeinsames GND</text>
+
+    <!-- Yellow: Arduino TX -> ESP32 RX2 -->
+    <line x1="20" y1="130" x2="50" y2="130" stroke="#ffb300" stroke-width="3"/>
+    <text x="60" y="134" font-size="11" font-weight="600" fill="#ffecb3">UART TX1 ➔ RX2 (Pin 16)</text>
+
+    <!-- Cyan: ESP32 TX2 -> Arduino RX -->
+    <line x1="20" y1="156" x2="50" y2="156" stroke="#00e5ff" stroke-width="3"/>
+    <text x="60" y="160" font-size="11" font-weight="600" fill="#b2ebf2">UART TX2 (Pin 17) ➔ RX0</text>
+
+    <!-- Blue/Green: I2C Bus -->
+    <line x1="20" y1="182" x2="35" y2="182" stroke="#29b6f6" stroke-width="3"/>
+    <line x1="35" y1="182" x2="50" y2="182" stroke="#00e676" stroke-width="3"/>
+    <text x="60" y="186" font-size="11" font-weight="600" fill="#b3e5fc">I2C (SDA = Blau, SCL = Grün)</text>
+
+    <!-- Purple: Reset -->
+    <line x1="20" y1="208" x2="50" y2="208" stroke="#ab47bc" stroke-width="2.5"/>
+    <text x="60" y="212" font-size="11" font-weight="600" fill="#e1bee7">HW Reset (GPIO 4 ➔ RST)</text>
+  </g>
+
+  <!-- Footer Notice -->
+  <text x="625" y="930" font-size="11" fill="#78909c" text-anchor="middle">
+    Alle aktiven Module in Buchsenleisten stecken · Verdrahtung auf der Platinenunterseite mit isoliertem Schaltdraht
+  </text>
+</svg>
