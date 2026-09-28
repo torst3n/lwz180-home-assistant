@@ -73,6 +73,15 @@ class GerberWriter:
         self.lines.append(f"X{self.format_coord(x1)}Y{self.format_coord(y1)}D02*")
         self.lines.append(f"X{self.format_coord(x2)}Y{self.format_coord(y2)}D01*")
 
+    def line_continuous(self, points, d_code):
+        if not points:
+            return
+        self.set_aperture(d_code)
+        x0, y0 = points[0]
+        self.lines.append(f"X{self.format_coord(x0)}Y{self.format_coord(y0)}D02*")
+        for x, y in points[1:]:
+            self.lines.append(f"X{self.format_coord(x)}Y{self.format_coord(y)}D01*")
+
     def poly_rect(self, x1, y1, x2, y2):
         self.lines.append("G36*")
         self.lines.append(f"X{self.format_coord(x1)}Y{self.format_coord(y1)}D02*")
@@ -153,7 +162,7 @@ def generate_pcb():
     drl = ExcellonWriter("lwz180_bridge.DRL")
 
     # Apertures
-    ap_outline = gml.add_aperture("C", 0.15)
+    ap_outline = gml.add_aperture("C", 0.05) # 0.05mm line thickness for precise outline
     ap_trace_pwr = gbl.add_aperture("C", 0.8) # 0.8mm for power
     ap_trace_sig_b = gbl.add_aperture("C", 0.4) # 0.4mm bottom signal
     ap_trace_sig_t = gtl.add_aperture("C", 0.4) # 0.4mm top signal
@@ -177,11 +186,15 @@ def generate_pcb():
     mask_m3 = gts.add_aperture("C", 6.2)
     gbs.add_aperture("C", 6.2)
 
-    # --- BOARD OUTLINE (GML) ---
-    gml.line(CORNER_R, 0, BOARD_W - CORNER_R, 0, ap_outline)
-    gml.line(BOARD_W, CORNER_R, BOARD_W, BOARD_H - CORNER_R, ap_outline)
-    gml.line(BOARD_W - CORNER_R, BOARD_H, CORNER_R, BOARD_H, ap_outline)
-    gml.line(0, BOARD_H - CORNER_R, 0, CORNER_R, ap_outline)
+    # --- BOARD OUTLINE (GML / Edge.Cuts) ---
+    # Must be a single, continuous, fully closed contour
+    gml.line_continuous([
+        (0.0, 0.0),
+        (BOARD_W, 0.0),
+        (BOARD_W, BOARD_H),
+        (0.0, BOARD_H),
+        (0.0, 0.0)
+    ], ap_outline)
 
     # --- MOUNTING HOLES ---
     m_holes = [(4.0, 4.0), (BOARD_W - 4.0, 4.0), (4.0, BOARD_H - 4.0), (BOARD_W - 4.0, BOARD_H - 4.0)]
@@ -402,12 +415,31 @@ def generate_pcb():
         drl.save(),
     ]
 
-    # --- CREATE ZIP PACKAGE FOR ORDERING (JLCPCB / AISLER / PCBWAY) ---
+    # --- CREATE ZIP PACKAGE FOR ORDERING (JLCPCB / PCBWAY) ---
     zip_path = os.path.join(OUTPUT_DIR, "lwz180_bridge_gerbers.zip")
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
         for f in files:
             zipf.write(f, os.path.basename(f))
     print(f"Generated Gerber ZIP Package: {zip_path}")
+
+    # --- CREATE AISLER-OPTIMIZED ZIP PACKAGE ---
+    aisler_mapping = {
+        gtl.filename: "lwz180_bridge.toplayer.ger",
+        gbl.filename: "lwz180_bridge.bottomlayer.ger",
+        gts.filename: "lwz180_bridge.topsoldermask.ger",
+        gbs.filename: "lwz180_bridge.bottomsoldermask.ger",
+        gto.filename: "lwz180_bridge.topsilkscreen.ger",
+        gbo.filename: "lwz180_bridge.bottomsilkscreen.ger",
+        gml.filename: "lwz180_bridge.boardoutline.ger",
+        drl.filename: "lwz180_bridge.drills_pth.xln",
+    }
+    aisler_zip_path = os.path.join(OUTPUT_DIR, "lwz180_bridge_aisler.zip")
+    with zipfile.ZipFile(aisler_zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
+        for f in files:
+            orig_name = os.path.basename(f)
+            if orig_name in aisler_mapping:
+                zipf.write(f, aisler_mapping[orig_name])
+    print(f"Generated AISLER ZIP Package: {aisler_zip_path}")
 
     # --- GENERATE BOM CSV ---
     bom_path = os.path.join(OUTPUT_DIR, "BOM.csv")
