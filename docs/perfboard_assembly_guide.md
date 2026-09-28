@@ -21,6 +21,17 @@ Dieses Dokument beschreibt den professionellen, vibrationsfesten Aufbau der Stie
 > **Goldene Regel: Nichts festlöten!**
 > Alle vier aktiven Module (ESP32, Arduino Micro, ISO1540, Level Shifter) werden **ausschließlich in Buchsenleisten gesteckt**. Sollte jemals ein Bauteil defekt sein oder du möchtest ein Board am PC umflashen, ziehst du es einfach schadlos aus dem Sockel.
 
+### 1.1 Amazon-Einkaufsliste mit exakten Suchbegriffen
+
+| Komponente | Exakter Amazon-Suchbegriff | Empfohlene Spezifikation & Tipps | ca. Preis |
+| :--- | :--- | :--- | :--- |
+| **Lochrasterplatinen** | `Lochrasterplatine 2.54mm FR4 Set` | Wichtig: **FR-4** Glasfaser (kein billiges Pertinax/Pappe), doppelseitig durchkontaktiert. Platinengröße ideal: **7 × 9 cm** (oder gemischtes 10er-Set). | ~7 – 9 € (Set) |
+| **Buchsenleisten** | `Buchsenleiste 2.54mm einreihig Set` | 2,54 mm Rastermaß, einreihig (Single Row). Am praktischsten ist ein Set aus trennbaren 40-poligen Leisten, die du mit dem Seitenschneider auf 15, 17, 6 und 4 Pins kürzt. | ~6 – 8 € (Set) |
+| **Print-Schraubklemmen** | `Printklemme 5.08mm KF301` *(oder `Schraubklemme 5.08mm 4 pin`)* | 5,08 mm Rastermaß für Leiterplatten. Entweder als fertige 4-Pin-Klemme oder als anreihbare 2-Pin-Klemmen (2 Stück aneinandergesteckt). | ~5 – 7 € (Pack) |
+| **Schaltdraht** | `Schaltdraht Set AWG24 massiv` | **Massiver** Kupferdraht (*Solid Core*, nicht flexible Litze!). AWG 24 (ca. 0,5 mm²) lässt sich sauber biegen und bleibt beim Löten exakt in Position. Ideal als Set mit verschiedenen Farben (Rot, Schwarz, etc.). | ~8 – 12 € (Set) |
+| **Abstandshalter** | `M3 Abstandshalter Nylon Set` | M3 Kunststoff-Distanzbolzen (z. B. 10 mm Höhe mit M3 Schrauben & Muttern) für die 4 Ecken, damit die Lötstellen auf der Unterseite isoliert bleiben. | ~6 – 9 € (Set) |
+| *(Falls Lötzinn fehlt)* | `Elektronik Lötzinn 0.8mm` | Dünnes Lötzinn (0,8 mm oder 1,0 mm) mit integrierter Flussmittelseele (Rosin Core / Kolophonium). | ~7 – 10 € |
+
 ---
 
 ## 2. Sicherheitszone: Die galvanische Trennung (Barrier)
