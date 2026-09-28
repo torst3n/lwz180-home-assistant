@@ -9,6 +9,8 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
+#include <WebServer.h>
+#include <ArduinoOTA.h>
 
 // ------------------ WIFI / MQTT CONFIG ----------------
 #include "secrets.h"
@@ -56,9 +58,38 @@ WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 HardwareSerial BridgeSerial(BRIDGE_UART_PORT);
 
+// ------------------ REMOTE DEBUG & WEB ----------------
+WiFiServer telnetServer(23);
+WiFiClient telnetClient;
+WebServer webServer(80);
+
+#define LOG_BUFFER_SIZE 60
+String logRingBuffer[LOG_BUFFER_SIZE];
+int logRingHead = 0;
+int logRingCount = 0;
+
+void logMessage(const String& msg) {
+  unsigned long s = millis() / 1000;
+  char timePrefix[16];
+  snprintf(timePrefix, sizeof(timePrefix), "[%02lu:%02lu:%02lu] ", (s / 3600), (s % 3600) / 60, s % 60);
+  String entry = String(timePrefix) + msg;
+
+  Serial.println(entry);
+  if (telnetClient && telnetClient.connected()) {
+    telnetClient.println(entry);
+  }
+
+  logRingBuffer[logRingHead] = entry;
+  logRingHead = (logRingHead + 1) % LOG_BUFFER_SIZE;
+  if (logRingCount < LOG_BUFFER_SIZE) {
+    logRingCount++;
+  }
+}
+
 String serialLine;
 uint32_t lastAvailabilityPublish = 0;
 uint32_t lastMqttAttempt = 0;
+uint32_t lastMqttConnectedTime = 0;
 uint32_t lastWifiAttempt = 0;
 long nextCommandId = 1;
 
@@ -207,7 +238,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
   memcpy(msg, payload, length);
   msg[length] = '\0';
 
-  Serial.printf("[MQTT] Received %s: %s\n", topic, msg);
+  logMessage("[MQTT] Received " + String(topic) + ": " + String(msg));
 
   if (strcmp(topic, TOPIC_LEVEL_SET) == 0) {
     int level = atoi(msg);
@@ -236,6 +267,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
 void ensureMqttConnected() {
   if (mqttClient.connected()) {
+    lastMqttConnectedTime = millis();
     return;
   }
 
@@ -245,11 +277,24 @@ void ensureMqttConnected() {
   }
   lastMqttAttempt = now;
 
-  Serial.println("[MQTT] Attempting connection...");
+  logMessage("[MQTT] Attempting connection...");
+
+  // Explicitly close any existing or half-closed TCP socket to prevent descriptor leaks
+  wifiClient.stop();
+
   String clientId = String("esp32-lwz180-") + String((uint32_t)ESP.getEfuseMac(), HEX);
   mqttClient.setKeepAlive(30);
+
+  IPAddress serverIp;
+  if (serverIp.fromString(MQTT_HOST)) {
+    mqttClient.setServer(serverIp, MQTT_PORT);
+  } else {
+    mqttClient.setServer(MQTT_HOST, MQTT_PORT);
+  }
+
   if (mqttClient.connect(clientId.c_str(), MQTT_USER, MQTT_PASSWORD, TOPIC_AVAILABILITY, 1, true, "offline")) {
-    Serial.println("[MQTT] Connected");
+    logMessage("[MQTT] Connected");
+    lastMqttConnectedTime = now;
     publishAvailability(true);
     publishDiscoveryConfig();
     mqttClient.subscribe(TOPIC_LEVEL_SET);
@@ -258,7 +303,13 @@ void ensureMqttConnected() {
     // Request current status from bridge to synchronize state immediately
     BridgeSerial.println("CMD,id=0,query=1");
   } else {
-    Serial.printf("[MQTT] Connection failed, rc=%d. Will retry.\n", mqttClient.state());
+    logMessage("[MQTT] Connection failed, rc=" + String(mqttClient.state()) + ". Will retry.");
+    // Watchdog: If disconnected continuously for > 3 minutes while WiFi is OK, reboot ESP32
+    if (lastMqttConnectedTime > 0 && (now - lastMqttConnectedTime > 180000)) {
+      logMessage("[WATCHDOG] MQTT disconnected for > 3 minutes. Restarting ESP32...");
+      delay(300);
+      ESP.restart();
+    }
   }
 }
 
@@ -309,7 +360,7 @@ int parseStatField(const String& line, const char* key) {
 }
 
 void handleBridgeLine(const String& line) {
-  Serial.printf("[BRIDGE] %s\n", line.c_str());
+  logMessage("[BRIDGE] " + line);
 
   if (line == "READY") {
     publishAvailability(true);
@@ -369,53 +420,56 @@ void readBridgeSerial() {
   }
 }
 
-String usbSerialLine;
-
-void handleUsbCommand(const String& cmd) {
+void handleCommand(const String& cmd) {
   if (cmd == "3") {
-    Serial.println("[USB-CLI] Setting ventilation level to 3 (Power Vent / Boost)");
+    logMessage("[CMD] Setting ventilation level to 3 (Power Vent / Boost)");
     if (state.powerVent != 1) {
       sendBridgeCommand("power_vent", "1");
     }
   } else if (cmd == "0" || cmd == "1" || cmd == "2") {
-    Serial.printf("[USB-CLI] Setting ventilation level to %s\n", cmd.c_str());
+    logMessage("[CMD] Setting ventilation level to " + cmd);
     if (state.powerVent == 1) {
       sendBridgeCommand("power_vent", "0");
     }
     sendBridgeCommand("level", cmd.c_str());
   } else if (cmd == "q") {
-    Serial.println("[USB-CLI] Querying bridge status...");
+    logMessage("[CMD] Querying bridge status...");
     long commandId = nextCommandId++;
     BridgeSerial.printf("CMD,id=%ld,query=1\n", commandId);
   } else if (cmd == "p") {
     int nextPower = (state.powerVent == 1) ? 0 : 1;
-    Serial.printf("[USB-CLI] Toggling power vent to %d\n", nextPower);
+    logMessage("[CMD] Toggling power vent to " + String(nextPower));
     sendBridgeCommand("power_vent", nextPower ? "1" : "0");
   } else if (cmd == "s") {
     int nextScheduled = (state.scheduled == 1) ? 0 : 1;
-    Serial.printf("[USB-CLI] Toggling scheduled mode to %d\n", nextScheduled);
+    logMessage("[CMD] Toggling scheduled mode to " + String(nextScheduled));
     sendBridgeCommand("scheduled", nextScheduled ? "1" : "0");
   } else if (cmd == "w") {
-    Serial.println("[USB-CLI] --- Network Diagnostics ---");
-    Serial.printf("  WiFi Status : %s\n", WiFi.status() == WL_CONNECTED ? "Connected" : "Disconnected");
-    Serial.printf("  IP Address  : %s\n", WiFi.localIP().toString().c_str());
-    Serial.printf("  WiFi RSSI   : %d dBm\n", WiFi.RSSI());
-    Serial.printf("  MQTT Status : %s (rc=%d)\n", mqttClient.connected() ? "Connected" : "Disconnected", mqttClient.state());
-    Serial.printf("  Current State: Level=%d, Scheduled=%d, PowerVent=%d\n", state.level, state.scheduled, state.powerVent);
+    logMessage("[CMD] --- Diagnostics ---");
+    logMessage("  WiFi: " + String(WiFi.status() == WL_CONNECTED ? "Connected" : "Disconnected") + " IP: " + WiFi.localIP().toString() + " RSSI: " + String(WiFi.RSSI()) + " dBm");
+    logMessage("  MQTT: " + String(mqttClient.connected() ? "Connected" : "Disconnected") + " (rc=" + String(mqttClient.state()) + ")");
+    logMessage("  State: Level=" + String(state.level) + " Sched=" + String(state.scheduled) + " PowerVent=" + String(state.powerVent));
+    logMessage("  Free Heap: " + String(ESP.getFreeHeap()) + " bytes");
+  } else if (cmd == "reboot" || cmd == "restart") {
+    logMessage("[CMD] Rebooting ESP32...");
+    delay(250);
+    ESP.restart();
   } else if (cmd.startsWith("CMD,")) {
-    Serial.printf("[USB-CLI] Forwarding raw command: %s\n", cmd.c_str());
+    logMessage("[CMD] Forwarding raw command: " + cmd);
     BridgeSerial.println(cmd);
   } else {
-    Serial.println("[USB-CLI] Commands: 0/1/2/3 = set level, q = query bridge, p = toggle power vent, s = toggle schedule, w = wifi/mqtt status");
+    logMessage("[CMD] Commands: 0/1/2/3 = level, q = query, p = power vent, s = schedule, w = status, reboot = restart");
   }
 }
+
+String usbSerialLine;
 
 void readUsbSerial() {
   while (Serial.available() > 0) {
     char ch = (char)Serial.read();
     if (ch == '\n' || ch == '\r') {
       if (usbSerialLine.length() > 0) {
-        handleUsbCommand(usbSerialLine);
+        handleCommand(usbSerialLine);
         usbSerialLine = "";
       }
     } else {
@@ -427,6 +481,147 @@ void readUsbSerial() {
   }
 }
 
+void handleTelnet() {
+  if (telnetServer.hasClient()) {
+    if (!telnetClient || !telnetClient.connected()) {
+      if (telnetClient) telnetClient.stop();
+      telnetClient = telnetServer.available();
+      telnetClient.println("\n=== LWZ180 ESP32 Remote Console ===");
+      telnetClient.println("Commands: 0/1/2/3 = level, q = query, p = power vent, s = schedule, w = status, reboot = restart");
+      telnetClient.print("> ");
+    } else {
+      WiFiClient rejected = telnetServer.available();
+      rejected.println("Busy: Another client is connected.");
+      rejected.stop();
+    }
+  }
+
+  static String telnetLine = "";
+  while (telnetClient && telnetClient.available()) {
+    char ch = (char)telnetClient.read();
+    if (ch == '\r' || ch == '\n') {
+      if (telnetLine.length() > 0) {
+        handleCommand(telnetLine);
+        telnetLine = "";
+        if (telnetClient && telnetClient.connected()) {
+          telnetClient.print("> ");
+        }
+      }
+    } else {
+      telnetLine += ch;
+      if (telnetLine.length() > 80) {
+        telnetLine = "";
+      }
+    }
+  }
+}
+
+void setupWebServer() {
+  webServer.on("/", HTTP_GET, []() {
+    String html = F("<!DOCTYPE html><html><head><meta charset='utf-8'>"
+                    "<meta name='viewport' content='width=device-width, initial-scale=1'>"
+                    "<title>LWZ 180 Bridge</title>"
+                    "<style>"
+                    "body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#121212;color:#eee;margin:0;padding:16px}"
+                    ".card{background:#1e1e1e;border-radius:8px;padding:16px;margin-bottom:16px;box-shadow:0 2px 4px rgba(0,0,0,0.4)}"
+                    "h2{margin:0 0 12px;color:#4fc3f7;font-size:1.2em}"
+                    ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}"
+                    ".box{background:#2a2a2a;border-radius:6px;padding:10px}"
+                    ".lbl{font-size:0.75em;color:#aaa;text-transform:uppercase}"
+                    ".val{font-size:1.3em;font-weight:bold;margin-top:2px}"
+                    ".ok{color:#81c784}.err{color:#e57373}"
+                    ".btn{display:inline-block;background:#0288d1;color:#fff;text-decoration:none;padding:8px 14px;border-radius:4px;font-weight:bold;margin:3px;border:none;cursor:pointer;font-size:0.9em}"
+                    ".btn:hover{background:#039be5}"
+                    ".btn-red{background:#d32f2f}.btn-red:hover{background:#f44336}"
+                    ".log{background:#000;color:#a5d6a7;font-family:monospace;font-size:11px;padding:10px;border-radius:6px;height:240px;overflow-y:scroll;white-space:pre-wrap;word-break:break-all}"
+                    "</style></head><body>"
+                    "<div class='card'><h2>LWZ 180 Bridge Status</h2>"
+                    "<div class='grid'>"
+                    "<div class='box'><div class='lbl'>Ventilation Level</div><div class='val'>");
+    html += (state.level >= 0 ? String(state.level) : "Unknown");
+    html += F("</div></div><div class='box'><div class='lbl'>Scheduled Mode</div><div class='val'>");
+    html += (state.scheduled == 1 ? "ACTIVE" : (state.scheduled == 0 ? "OFF" : "Unknown"));
+    html += F("</div></div><div class='box'><div class='lbl'>Power Vent</div><div class='val'>");
+    html += (state.powerVent == 1 ? "BOOST" : (state.powerVent == 0 ? "OFF" : "Unknown"));
+    html += F("</div></div><div class='box'><div class='lbl'>MQTT Connection</div><div class='val ");
+    html += (mqttClient.connected() ? "ok'>CONNECTED" : "err'>DISCONNECTED");
+    html += F("</div></div><div class='box'><div class='lbl'>WiFi Signal</div><div class='val'>");
+    html += String(WiFi.RSSI()) + " dBm";
+    html += F("</div></div><div class='box'><div class='lbl'>Uptime</div><div class='val'>");
+    unsigned long s = millis() / 1000;
+    char upStr[24];
+    snprintf(upStr, sizeof(upStr), "%luh %02lum %02lus", s / 3600, (s % 3600) / 60, s % 60);
+    html += String(upStr);
+    html += F("</div></div></div></div>"
+              "<div class='card'><h2>Quick Controls</h2>"
+              "<a class='btn' href='/cmd?c=0'>Level 0</a>"
+              "<a class='btn' href='/cmd?c=1'>Level 1</a>"
+              "<a class='btn' href='/cmd?c=2'>Level 2</a>"
+              "<a class='btn' href='/cmd?c=3'>Level 3</a>"
+              "<a class='btn' href='/cmd?c=p'>Toggle Boost</a>"
+              "<a class='btn' href='/cmd?c=s'>Toggle Schedule</a>"
+              "<a class='btn' href='/cmd?c=q'>Query Bridge</a>"
+              "<a class='btn btn-red' href='/reboot' onclick=\"return confirm('Restart ESP32?');\">Restart ESP32</a>"
+              "</div>"
+              "<div class='card'><h2>Live Log Stream (Last 60 lines)</h2>"
+              "<div class='log' id='logbox'>");
+
+    int startIdx = (logRingCount < LOG_BUFFER_SIZE) ? 0 : logRingHead;
+    for (int i = 0; i < logRingCount; i++) {
+      int idx = (startIdx + i) % LOG_BUFFER_SIZE;
+      html += logRingBuffer[idx] + "\n";
+    }
+
+    html += F("</div><p style='margin-top:8px'><a class='btn' href='/'>Refresh</a> <a class='btn' href='/log' target='_blank'>Raw Log</a></p>"
+              "<script>var b=document.getElementById('logbox');b.scrollTop=b.scrollHeight;</script>"
+              "</div></body></html>");
+
+    webServer.send(200, "text/html", html);
+  });
+
+  webServer.on("/cmd", HTTP_GET, []() {
+    if (webServer.hasArg("c")) {
+      String c = webServer.arg("c");
+      handleCommand(c);
+    }
+    webServer.sendHeader("Location", "/");
+    webServer.send(303);
+  });
+
+  webServer.on("/log", HTTP_GET, []() {
+    String out = "";
+    int startIdx = (logRingCount < LOG_BUFFER_SIZE) ? 0 : logRingHead;
+    for (int i = 0; i < logRingCount; i++) {
+      int idx = (startIdx + i) % LOG_BUFFER_SIZE;
+      out += logRingBuffer[idx] + "\n";
+    }
+    webServer.send(200, "text/plain", out);
+  });
+
+  webServer.on("/reboot", HTTP_GET, []() {
+    webServer.send(200, "text/html", F("<html><body style='background:#121212;color:#eee;font-family:sans-serif;padding:30px'><h2>Rebooting ESP32...</h2><p>Please wait 10 seconds, then <a href='/' style='color:#4fc3f7'>return to Dashboard</a>.</p><script>setTimeout(function(){location.href='/';},10000);</script></body></html>"));
+    delay(500);
+    ESP.restart();
+  });
+
+  webServer.begin();
+}
+
+void setupOta() {
+  ArduinoOTA.setHostname("esp32-lwz180");
+  ArduinoOTA.onStart([]() {
+    String type = (ArduinoOTA.getCommand() == U_FLASH) ? "sketch" : "filesystem";
+    logMessage("[OTA] Start updating " + type);
+  });
+  ArduinoOTA.onEnd([]() {
+    logMessage("[OTA] Finished. Rebooting...");
+  });
+  ArduinoOTA.onError([](ota_error_t error) {
+    logMessage("[OTA] Error (" + String(error) + ")");
+  });
+  ArduinoOTA.begin();
+}
+
 void setup() {
   Serial.begin(115200);
   delay(50);
@@ -435,15 +630,35 @@ void setup() {
 
   connectWifi();
 
-  mqttClient.setServer(MQTT_HOST, MQTT_PORT);
+  // Start Telnet Server on port 23
+  telnetServer.begin();
+  telnetServer.setNoDelay(true);
+
+  // Start Web Server on port 80
+  setupWebServer();
+
+  // Start Arduino OTA on port 3232
+  setupOta();
+
+  lastMqttConnectedTime = millis();
   mqttClient.setBufferSize(1024);  // HA discovery payloads exceed default 256
   mqttClient.setCallback(mqttCallback);
 
   ensureMqttConnected();
+  logMessage("[SYSTEM] ESP32 Ready. Web: http://" + WiFi.localIP().toString() + ", Telnet: port 23, OTA active");
 }
 
 void loop() {
   uint32_t now = millis();
+
+  // Handle OTA updates
+  ArduinoOTA.handle();
+
+  // Handle Web Server requests
+  webServer.handleClient();
+
+  // Handle Telnet connections & commands
+  handleTelnet();
 
   // If Wi-Fi is connected, run MQTT tasks asynchronously
   if (WiFi.status() == WL_CONNECTED) {
@@ -455,7 +670,7 @@ void loop() {
     // Non-blocking WiFi reconnect fallback
     if (now - lastWifiAttempt > 10000) {
       lastWifiAttempt = now;
-      Serial.println("[WIFI] Disconnected. Reconnecting...");
+      logMessage("[WIFI] Disconnected. Reconnecting...");
       WiFi.disconnect();
       WiFi.reconnect();
     }
@@ -474,5 +689,5 @@ void loop() {
     }
   }
 
-  delay(5);
+  delay(2);
 }
