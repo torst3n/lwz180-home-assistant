@@ -20,6 +20,7 @@
 #define BRIDGE_UART_RX_PIN 16
 #define BRIDGE_UART_TX_PIN 17
 #define BRIDGE_UART_PORT 2
+#define BRIDGE_RESET_PIN 4 // Optional: Connect GPIO 4 to Arduino Micro RESET pin
 
 // ------------------ MQTT TOPICS -----------------------
 const char* TOPIC_AVAILABILITY = "ventilation/bridge/status";
@@ -360,6 +361,15 @@ int parseStatField(const String& line, const char* key) {
 }
 
 void handleBridgeLine(const String& line) {
+  if (line.startsWith("SNIFF,")) {
+    logMessage("[SNIFF] " + line.substring(6));
+    return;
+  }
+  if (line.startsWith("DIAG,")) {
+    logMessage("[BRIDGE-DIAG] " + line.substring(5));
+    return;
+  }
+
   logMessage("[BRIDGE] " + line);
 
   if (line == "READY") {
@@ -420,45 +430,90 @@ void readBridgeSerial() {
   }
 }
 
+void resetBridgeHardware() {
+  logMessage("[SYSTEM] Triggering hardware reset on Arduino Micro (GPIO 4 LOW)...");
+  pinMode(BRIDGE_RESET_PIN, OUTPUT);
+  digitalWrite(BRIDGE_RESET_PIN, LOW);
+  delay(60);
+  pinMode(BRIDGE_RESET_PIN, INPUT_PULLUP);
+  logMessage("[SYSTEM] Bridge hardware reset pulse completed.");
+}
+
+void rebootBridgeSoftware() {
+  logMessage("[CMD] Sending software reboot command to bridge...");
+  long commandId = nextCommandId++;
+  BridgeSerial.printf("CMD,id=%ld,reboot=1\n", commandId);
+}
+
 void handleCommand(const String& cmd) {
-  if (cmd == "3") {
+  String c = cmd;
+  c.replace('+', ' ');
+  c.trim();
+
+  if (c == "3") {
     logMessage("[CMD] Setting ventilation level to 3 (Power Vent / Boost)");
     if (state.powerVent != 1) {
       sendBridgeCommand("power_vent", "1");
     }
-  } else if (cmd == "0" || cmd == "1" || cmd == "2") {
-    logMessage("[CMD] Setting ventilation level to " + cmd);
+  } else if (c == "0" || c == "1" || c == "2") {
+    logMessage("[CMD] Setting ventilation level to " + c);
     if (state.powerVent == 1) {
       sendBridgeCommand("power_vent", "0");
     }
-    sendBridgeCommand("level", cmd.c_str());
-  } else if (cmd == "q") {
+    sendBridgeCommand("level", c.c_str());
+  } else if (c == "q") {
     logMessage("[CMD] Querying bridge status...");
     long commandId = nextCommandId++;
     BridgeSerial.printf("CMD,id=%ld,query=1\n", commandId);
-  } else if (cmd == "p") {
+  } else if (c == "p") {
     int nextPower = (state.powerVent == 1) ? 0 : 1;
     logMessage("[CMD] Toggling power vent to " + String(nextPower));
     sendBridgeCommand("power_vent", nextPower ? "1" : "0");
-  } else if (cmd == "s") {
+  } else if (c == "s") {
     int nextScheduled = (state.scheduled == 1) ? 0 : 1;
     logMessage("[CMD] Toggling scheduled mode to " + String(nextScheduled));
     sendBridgeCommand("scheduled", nextScheduled ? "1" : "0");
-  } else if (cmd == "w") {
-    logMessage("[CMD] --- Diagnostics ---");
+  } else if (c == "d" || c == "diag" || c == "w") {
+    logMessage("[CMD] --- ESP32 Diagnostics ---");
     logMessage("  WiFi: " + String(WiFi.status() == WL_CONNECTED ? "Connected" : "Disconnected") + " IP: " + WiFi.localIP().toString() + " RSSI: " + String(WiFi.RSSI()) + " dBm");
     logMessage("  MQTT: " + String(mqttClient.connected() ? "Connected" : "Disconnected") + " (rc=" + String(mqttClient.state()) + ")");
     logMessage("  State: Level=" + String(state.level) + " Sched=" + String(state.scheduled) + " PowerVent=" + String(state.powerVent));
     logMessage("  Free Heap: " + String(ESP.getFreeHeap()) + " bytes");
-  } else if (cmd == "reboot" || cmd == "restart") {
+    logMessage("[CMD] Querying Arduino Micro bridge diagnostics...");
+    long commandId = nextCommandId++;
+    BridgeSerial.printf("CMD,id=%ld,diag=1\n", commandId);
+  } else if (c == "sniff" || c == "sn" || c == "sniff 1" || c == "sniff1") {
+    logMessage("[CMD] Starting I2C bus sniffer on Arduino Micro (60s)...");
+    long commandId = nextCommandId++;
+    BridgeSerial.printf("CMD,id=%ld,sniff=1\n", commandId);
+  } else if (c == "sniff 0" || c == "sniff0" || c == "stopsniff") {
+    logMessage("[CMD] Stopping I2C bus sniffer on Arduino Micro...");
+    long commandId = nextCommandId++;
+    BridgeSerial.printf("CMD,id=%ld,sniff=0\n", commandId);
+  } else if (c.startsWith("btn ") || c.startsWith("btn=")) {
+    String btnName = c.substring(4);
+    btnName.trim();
+    logMessage("[CMD] Sending button trigger to bridge: " + btnName);
+    long commandId = nextCommandId++;
+    BridgeSerial.printf("CMD,id=%ld,btn=%s\n", commandId, btnName.c_str());
+  } else if (c == "wake") {
+    logMessage("[CMD] Sending wake burst to bridge...");
+    long commandId = nextCommandId++;
+    BridgeSerial.printf("CMD,id=%ld,btn=wake\n", commandId);
+  } else if (c == "rb" || c == "reset bridge" || c == "reset_bridge") {
+    resetBridgeHardware();
+    rebootBridgeSoftware();
+  } else if (c == "reboot_bridge") {
+    rebootBridgeSoftware();
+  } else if (c == "reboot" || c == "restart") {
     logMessage("[CMD] Rebooting ESP32...");
     delay(250);
     ESP.restart();
-  } else if (cmd.startsWith("CMD,")) {
-    logMessage("[CMD] Forwarding raw command: " + cmd);
-    BridgeSerial.println(cmd);
+  } else if (c.startsWith("CMD,")) {
+    logMessage("[CMD] Forwarding raw command: " + c);
+    BridgeSerial.println(c);
   } else {
-    logMessage("[CMD] Commands: 0/1/2/3 = level, q = query, p = power vent, s = schedule, w = status, reboot = restart");
+    logMessage("[CMD] Commands: 0/1/2/3 = level, q = query, p = power vent, s = schedule, d = diag, sniff = sniff I2C (60s), wake = wake burst, btn up|down|pv, rb = reset bridge, reboot = reboot esp32");
   }
 }
 
@@ -487,7 +542,7 @@ void handleTelnet() {
       if (telnetClient) telnetClient.stop();
       telnetClient = telnetServer.available();
       telnetClient.println("\n=== LWZ180 ESP32 Remote Console ===");
-      telnetClient.println("Commands: 0/1/2/3 = level, q = query, p = power vent, s = schedule, w = status, reboot = restart");
+      telnetClient.println("Commands: 0/1/2/3 = level, q = query, p = power vent, s = schedule, d = diag, sniff = sniff I2C (60s), wake = wake burst, btn up|down|pv, rb = reset bridge, reboot = reboot esp32");
       telnetClient.print("> ");
     } else {
       WiFiClient rejected = telnetServer.available();
@@ -520,22 +575,25 @@ void setupWebServer() {
   webServer.on("/", HTTP_GET, []() {
     String html = F("<!DOCTYPE html><html><head><meta charset='utf-8'>"
                     "<meta name='viewport' content='width=device-width, initial-scale=1'>"
-                    "<title>LWZ 180 Bridge</title>"
+                    "<title>LWZ 180 Remote Console & Bridge</title>"
                     "<style>"
                     "body{font-family:-apple-system,BlinkMacSystemFont,sans-serif;background:#121212;color:#eee;margin:0;padding:16px}"
                     ".card{background:#1e1e1e;border-radius:8px;padding:16px;margin-bottom:16px;box-shadow:0 2px 4px rgba(0,0,0,0.4)}"
-                    "h2{margin:0 0 12px;color:#4fc3f7;font-size:1.2em}"
-                    ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}"
+                    "h2{margin:0 0 12px;color:#4fc3f7;font-size:1.15em}"
+                    ".grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}"
                     ".box{background:#2a2a2a;border-radius:6px;padding:10px}"
-                    ".lbl{font-size:0.75em;color:#aaa;text-transform:uppercase}"
-                    ".val{font-size:1.3em;font-weight:bold;margin-top:2px}"
+                    ".lbl{font-size:0.72em;color:#aaa;text-transform:uppercase;letter-spacing:0.5px}"
+                    ".val{font-size:1.25em;font-weight:bold;margin-top:2px}"
                     ".ok{color:#81c784}.err{color:#e57373}"
-                    ".btn{display:inline-block;background:#0288d1;color:#fff;text-decoration:none;padding:8px 14px;border-radius:4px;font-weight:bold;margin:3px;border:none;cursor:pointer;font-size:0.9em}"
+                    ".btn{display:inline-block;background:#0288d1;color:#fff;text-decoration:none;padding:7px 12px;border-radius:4px;font-weight:600;margin:3px;border:none;cursor:pointer;font-size:0.85em}"
                     ".btn:hover{background:#039be5}"
+                    ".btn-sec{background:#37474f}.btn-sec:hover{background:#455a64}"
+                    ".btn-warn{background:#f57c00}.btn-warn:hover{background:#fb8c00}"
                     ".btn-red{background:#d32f2f}.btn-red:hover{background:#f44336}"
-                    ".log{background:#000;color:#a5d6a7;font-family:monospace;font-size:11px;padding:10px;border-radius:6px;height:240px;overflow-y:scroll;white-space:pre-wrap;word-break:break-all}"
+                    ".log{background:#000;color:#a5d6a7;font-family:monospace;font-size:11px;padding:10px;border-radius:6px;height:280px;overflow-y:scroll;white-space:pre-wrap;word-break:break-all}"
+                    ".toolbar{margin-top:8px;display:flex;align-items:center;gap:12px;font-size:0.85em}"
                     "</style></head><body>"
-                    "<div class='card'><h2>LWZ 180 Bridge Status</h2>"
+                    "<div class='card'><h2>LWZ 180 System Status</h2>"
                     "<div class='grid'>"
                     "<div class='box'><div class='lbl'>Ventilation Level</div><div class='val'>");
     html += (state.level >= 0 ? String(state.level) : "Unknown");
@@ -553,17 +611,28 @@ void setupWebServer() {
     snprintf(upStr, sizeof(upStr), "%luh %02lum %02lus", s / 3600, (s % 3600) / 60, s % 60);
     html += String(upStr);
     html += F("</div></div></div></div>"
-              "<div class='card'><h2>Quick Controls</h2>"
+              "<div class='card'><h2>Ventilation Controls</h2>"
               "<a class='btn' href='/cmd?c=0'>Level 0</a>"
               "<a class='btn' href='/cmd?c=1'>Level 1</a>"
               "<a class='btn' href='/cmd?c=2'>Level 2</a>"
-              "<a class='btn' href='/cmd?c=3'>Level 3</a>"
-              "<a class='btn' href='/cmd?c=p'>Toggle Boost</a>"
-              "<a class='btn' href='/cmd?c=s'>Toggle Schedule</a>"
-              "<a class='btn' href='/cmd?c=q'>Query Bridge</a>"
+              "<a class='btn' href='/cmd?c=3'>Level 3 (Boost)</a>"
+              "<a class='btn btn-sec' href='/cmd?c=p'>Toggle Boost</a>"
+              "<a class='btn btn-sec' href='/cmd?c=s'>Toggle Schedule</a>"
+              "<a class='btn btn-sec' href='/cmd?c=q'>Query Bridge</a>"
+              "</div>"
+              "<div class='card'><h2>Remote Debugging & Bus Diagnostics (ESP32 & Arduino)</h2>"
+              "<a class='btn' href='/cmd?c=d'>Diagnostics (Both)</a>"
+              "<a class='btn btn-warn' href='/cmd?c=sniff'>Sniff I2C Bus (60s)</a>"
+              "<a class='btn btn-sec' href='/cmd?c=sniff0'>Stop Sniff</a>"
+              "<a class='btn' href='/cmd?c=wake'>Send Wake Burst</a>"
+              "<a class='btn btn-sec' href='/cmd?c=btn+up'>Pulse UP</a>"
+              "<a class='btn btn-sec' href='/cmd?c=btn+down'>Pulse DOWN</a>"
+              "<a class='btn btn-sec' href='/cmd?c=btn+pv'>Pulse PV</a>"
+              "<a class='btn btn-warn' href='/cmd?c=reboot_bridge' onclick=\"return confirm('Send soft reboot to Arduino Micro?');\">Soft Reboot Bridge</a>"
+              "<a class='btn btn-red' href='/cmd?c=rb' onclick=\"return confirm('Hardware Reset Arduino Micro via GPIO 4?');\">HW Reset Bridge</a>"
               "<a class='btn btn-red' href='/reboot' onclick=\"return confirm('Restart ESP32?');\">Restart ESP32</a>"
               "</div>"
-              "<div class='card'><h2>Live Log Stream (Last 60 lines)</h2>"
+              "<div class='card'><h2>Live Log Stream</h2>"
               "<div class='log' id='logbox'>");
 
     int startIdx = (logRingCount < LOG_BUFFER_SIZE) ? 0 : logRingHead;
@@ -572,8 +641,23 @@ void setupWebServer() {
       html += logRingBuffer[idx] + "\n";
     }
 
-    html += F("</div><p style='margin-top:8px'><a class='btn' href='/'>Refresh</a> <a class='btn' href='/log' target='_blank'>Raw Log</a></p>"
-              "<script>var b=document.getElementById('logbox');b.scrollTop=b.scrollHeight;</script>"
+    html += F("</div><div class='toolbar'>"
+              "<label><input type='checkbox' id='autoPoll' checked> Auto-refresh log (2s)</label>"
+              "<a class='btn btn-sec' href='/'>Refresh Page</a>"
+              "<a class='btn btn-sec' href='/log' target='_blank'>Raw Text Log</a>"
+              "</div>"
+              "<script>"
+              "var b=document.getElementById('logbox');b.scrollTop=b.scrollHeight;"
+              "setInterval(function(){"
+              "  if(document.getElementById('autoPoll').checked){"
+              "    fetch('/log').then(r=>r.text()).then(t=>{"
+              "      var atBottom = (b.scrollHeight - b.scrollTop <= b.clientHeight + 20);"
+              "      b.innerText = t;"
+              "      if(atBottom) b.scrollTop = b.scrollHeight;"
+              "    }).catch(e=>{});"
+              "  }"
+              "},2000);"
+              "</script>"
               "</div></body></html>");
 
     webServer.send(200, "text/html", html);
@@ -626,6 +710,7 @@ void setup() {
   Serial.begin(115200);
   delay(50);
 
+  pinMode(BRIDGE_RESET_PIN, INPUT_PULLUP);
   BridgeSerial.begin(BRIDGE_SERIAL_BAUD, SERIAL_8N1, BRIDGE_UART_RX_PIN, BRIDGE_UART_TX_PIN);
 
   connectWifi();

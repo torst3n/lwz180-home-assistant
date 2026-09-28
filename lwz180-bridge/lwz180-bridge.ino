@@ -94,6 +94,19 @@ const byte DIGIT_3 = 0x4f;
 int8_t target_level = -1;
 bool set_scheduled = false;
 
+uint32_t totalPackets = 0;
+bool snifferActive = false;
+uint32_t snifferUntil = 0;
+volatile bool newPacketAvailable = false;
+volatile byte lastPacketLen = 0;
+volatile byte lastPacketData[28];
+
+int freeMemory() {
+  extern int __heap_start, *__brkval;
+  int v;
+  return (int)&v - (__brkval == 0 ? (int)&__heap_start : (int)__brkval);
+}
+
 struct PendingCommand {
   bool active;
   long id;
@@ -238,6 +251,62 @@ void handleCommandLine(const String& line) {
     Serial1.print(id);
     Serial1.println(",ok=1,msg=status_reported");
     return;
+  } else if (line.indexOf("diag=") > -1) {
+    Serial1.print("DIAG,uptime=");
+    Serial1.print(millis() / 1000);
+    Serial1.print(",packets=");
+    Serial1.print(totalPackets);
+    Serial1.print(",level=");
+    Serial1.print(stat.level);
+    Serial1.print(",sched=");
+    Serial1.print(stat.scheduled);
+    Serial1.print(",pv=");
+    Serial1.print(stat.power_vent);
+    Serial1.print(",target=");
+    Serial1.print(target_level);
+    Serial1.print(",attempts=");
+    Serial1.print(pending.attempts);
+    Serial1.print(",free_ram=");
+    Serial1.println(freeMemory());
+    Serial1.print("ACK,id=");
+    Serial1.print(id);
+    Serial1.println(",ok=1,msg=diag_reported");
+    return;
+  } else if (line.indexOf("sniff=") > -1) {
+    int val = line.substring(line.indexOf("sniff=") + 6).toInt();
+    snifferActive = (val != 0);
+    if (snifferActive) {
+      snifferUntil = millis() + 60000UL; // Sniff for 60 seconds
+    }
+    Serial1.print("ACK,id=");
+    Serial1.print(id);
+    Serial1.print(",ok=1,msg=sniffer_");
+    Serial1.println(snifferActive ? "on" : "off");
+    return;
+  } else if (line.indexOf("btn=") > -1) {
+    String btn = line.substring(line.indexOf("btn=") + 4);
+    btn.trim();
+    if (btn == "up") {
+      sendButton(BUTTON_UP, 2);
+    } else if (btn == "down") {
+      sendButton(BUTTON_DOWN, 2);
+    } else if (btn == "pv") {
+      sendButton(BUTTON_POWER_VENT, 1);
+    } else if (btn == "wake") {
+      sendButton(BUTTON_UP, 8);
+    }
+    Serial1.print("ACK,id=");
+    Serial1.print(id);
+    Serial1.println(",ok=1,msg=button_sent");
+    return;
+  } else if (line.indexOf("reboot=1") > -1 || line.indexOf("reset=1") > -1) {
+    Serial1.print("ACK,id=");
+    Serial1.print(id);
+    Serial1.println(",ok=1,msg=rebooting");
+    Serial1.flush();
+    delay(50);
+    asm volatile ("jmp 0");
+    return;
   }
 
   Serial1.print("ACK,id=");
@@ -270,6 +339,12 @@ void receiveEvent(int howMany) {
   }
 
   Wire.readBytes(data, howMany);
+  totalPackets++;
+  if (snifferActive && !newPacketAvailable && howMany <= 28) {
+    lastPacketLen = howMany;
+    memcpy((void*)lastPacketData, data, howMany);
+    newPacketAvailable = true;
+  }
 
   if (howMany == 7 && data[0] == 0xe3 && data[1] == 0x20) {
     byte reg = data[3];
@@ -397,6 +472,41 @@ void loop() {
   if (stat_changed) {
     stat_changed = 0;
     reportStat();
+  }
+
+  if (snifferActive && now > snifferUntil) {
+    snifferActive = false;
+    Serial1.println("SNIFF,expired");
+  }
+
+  if (newPacketAvailable) {
+    newPacketAvailable = false;
+    Serial1.print("SNIFF,len=");
+    Serial1.print(lastPacketLen);
+    if (lastPacketLen == 28 && lastPacketData[0] == 0xf7) {
+      Serial1.print(",type=display,digit=0x");
+      Serial1.print(lastPacketData[8], HEX);
+      Serial1.print(",sched=");
+      Serial1.print((bool)(lastPacketData[15] & 0x01));
+      Serial1.print(",pv=");
+      Serial1.print((bool)(lastPacketData[26] & 0x01));
+      Serial1.print(",fan_icon=");
+      Serial1.print((bool)(lastPacketData[16] & 0x10));
+      Serial1.print(",pwr_icon=");
+      Serial1.print((bool)(lastPacketData[12] & 0x04));
+    } else if (lastPacketLen == 7 && lastPacketData[0] == 0xe3) {
+      Serial1.print(",type=meas,reg=0x");
+      Serial1.print(lastPacketData[3], HEX);
+      int16_t v = (int16_t)((lastPacketData[4] << 8) + lastPacketData[5]);
+      Serial1.print(",val=");
+      Serial1.print(v);
+    }
+    Serial1.print(",raw=");
+    for (byte i = 0; i < lastPacketLen; i++) {
+      if (lastPacketData[i] < 0x10) Serial1.print("0");
+      Serial1.print(lastPacketData[i], HEX);
+    }
+    Serial1.println();
   }
 
   if (pending.active) {
