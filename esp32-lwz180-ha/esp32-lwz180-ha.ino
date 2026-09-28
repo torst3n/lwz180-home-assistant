@@ -59,6 +59,7 @@ HardwareSerial BridgeSerial(BRIDGE_UART_PORT);
 String serialLine;
 uint32_t lastAvailabilityPublish = 0;
 uint32_t lastMqttAttempt = 0;
+uint32_t lastWifiAttempt = 0;
 long nextCommandId = 1;
 
 struct State {
@@ -155,7 +156,7 @@ void publishDiscoveryConfig() {
   publishDiscovery("sensor", "filter_life", payload);
 
   snprintf(payload, sizeof(payload),
-           "{\"name\":\"LWZ180 Ventilation Level\",\"uniq_id\":\"%s_level\",\"cmd_t\":\"%s\",\"stat_t\":\"%s\",\"min\":0,\"max\":2,\"step\":1,\"mode\":\"box\",\"avty_t\":\"%s\",\"pl_avail\":\"online\",\"pl_not_avail\":\"offline\",\"dev\":{\"ids\":[\"%s\"],\"name\":\"%s\",\"mf\":\"%s\",\"mdl\":\"%s\"}}",
+           "{\"name\":\"LWZ180 Ventilation Level\",\"uniq_id\":\"%s_level\",\"cmd_t\":\"%s\",\"stat_t\":\"%s\",\"min\":0,\"max\":3,\"step\":1,\"mode\":\"box\",\"avty_t\":\"%s\",\"pl_avail\":\"online\",\"pl_not_avail\":\"offline\",\"dev\":{\"ids\":[\"%s\"],\"name\":\"%s\",\"mf\":\"%s\",\"mdl\":\"%s\"}}",
            DEVICE_ID, TOPIC_LEVEL_SET, TOPIC_LEVEL_STATE, TOPIC_AVAILABILITY, DEVICE_ID, DEVICE_NAME, DEVICE_MANUFACTURER, DEVICE_MODEL);
   publishDiscovery("number", "ventilation_level", payload);
 
@@ -210,7 +211,14 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
   if (strcmp(topic, TOPIC_LEVEL_SET) == 0) {
     int level = atoi(msg);
-    if (level >= 0 && level <= 2) {
+    if (level == 3) {
+      if (state.powerVent != 1) {
+        sendBridgeCommand("power_vent", "1");
+      }
+    } else if (level >= 0 && level <= 2) {
+      if (state.powerVent == 1) {
+        sendBridgeCommand("power_vent", "0");
+      }
       char value[4];
       itoa(level, value, 10);
       sendBridgeCommand("level", value);
@@ -239,6 +247,7 @@ void ensureMqttConnected() {
 
   Serial.println("[MQTT] Attempting connection...");
   String clientId = String("esp32-lwz180-") + String((uint32_t)ESP.getEfuseMac(), HEX);
+  mqttClient.setKeepAlive(30);
   if (mqttClient.connect(clientId.c_str(), MQTT_USER, MQTT_PASSWORD, TOPIC_AVAILABILITY, 1, true, "offline")) {
     Serial.println("[MQTT] Connected");
     publishAvailability(true);
@@ -360,6 +369,64 @@ void readBridgeSerial() {
   }
 }
 
+String usbSerialLine;
+
+void handleUsbCommand(const String& cmd) {
+  if (cmd == "3") {
+    Serial.println("[USB-CLI] Setting ventilation level to 3 (Power Vent / Boost)");
+    if (state.powerVent != 1) {
+      sendBridgeCommand("power_vent", "1");
+    }
+  } else if (cmd == "0" || cmd == "1" || cmd == "2") {
+    Serial.printf("[USB-CLI] Setting ventilation level to %s\n", cmd.c_str());
+    if (state.powerVent == 1) {
+      sendBridgeCommand("power_vent", "0");
+    }
+    sendBridgeCommand("level", cmd.c_str());
+  } else if (cmd == "q") {
+    Serial.println("[USB-CLI] Querying bridge status...");
+    long commandId = nextCommandId++;
+    BridgeSerial.printf("CMD,id=%ld,query=1\n", commandId);
+  } else if (cmd == "p") {
+    int nextPower = (state.powerVent == 1) ? 0 : 1;
+    Serial.printf("[USB-CLI] Toggling power vent to %d\n", nextPower);
+    sendBridgeCommand("power_vent", nextPower ? "1" : "0");
+  } else if (cmd == "s") {
+    int nextScheduled = (state.scheduled == 1) ? 0 : 1;
+    Serial.printf("[USB-CLI] Toggling scheduled mode to %d\n", nextScheduled);
+    sendBridgeCommand("scheduled", nextScheduled ? "1" : "0");
+  } else if (cmd == "w") {
+    Serial.println("[USB-CLI] --- Network Diagnostics ---");
+    Serial.printf("  WiFi Status : %s\n", WiFi.status() == WL_CONNECTED ? "Connected" : "Disconnected");
+    Serial.printf("  IP Address  : %s\n", WiFi.localIP().toString().c_str());
+    Serial.printf("  WiFi RSSI   : %d dBm\n", WiFi.RSSI());
+    Serial.printf("  MQTT Status : %s (rc=%d)\n", mqttClient.connected() ? "Connected" : "Disconnected", mqttClient.state());
+    Serial.printf("  Current State: Level=%d, Scheduled=%d, PowerVent=%d\n", state.level, state.scheduled, state.powerVent);
+  } else if (cmd.startsWith("CMD,")) {
+    Serial.printf("[USB-CLI] Forwarding raw command: %s\n", cmd.c_str());
+    BridgeSerial.println(cmd);
+  } else {
+    Serial.println("[USB-CLI] Commands: 0/1/2/3 = set level, q = query bridge, p = toggle power vent, s = toggle schedule, w = wifi/mqtt status");
+  }
+}
+
+void readUsbSerial() {
+  while (Serial.available() > 0) {
+    char ch = (char)Serial.read();
+    if (ch == '\n' || ch == '\r') {
+      if (usbSerialLine.length() > 0) {
+        handleUsbCommand(usbSerialLine);
+        usbSerialLine = "";
+      }
+    } else {
+      usbSerialLine += ch;
+      if (usbSerialLine.length() > 80) {
+        usbSerialLine = "";
+      }
+    }
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   delay(50);
@@ -376,18 +443,30 @@ void setup() {
 }
 
 void loop() {
+  uint32_t now = millis();
+
   // If Wi-Fi is connected, run MQTT tasks asynchronously
   if (WiFi.status() == WL_CONNECTED) {
     ensureMqttConnected();
     if (mqttClient.connected()) {
       mqttClient.loop();
     }
+  } else {
+    // Non-blocking WiFi reconnect fallback
+    if (now - lastWifiAttempt > 10000) {
+      lastWifiAttempt = now;
+      Serial.println("[WIFI] Disconnected. Reconnecting...");
+      WiFi.disconnect();
+      WiFi.reconnect();
+    }
   }
+
+  // Parse commands from USB Serial console
+  readUsbSerial();
 
   // Always parse data from the bridge to prevent serial RX buffer overflow
   readBridgeSerial();
 
-  uint32_t now = millis();
   if (WiFi.status() == WL_CONNECTED && mqttClient.connected()) {
     if (now - lastAvailabilityPublish > 30000) {
       lastAvailabilityPublish = now;

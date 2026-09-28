@@ -17,7 +17,7 @@
       ACK,id=123,ok=0,msg=timeout
 
     RX <- ESP32:
-      CMD,id=123,level=0..2
+      CMD,id=123,level=0..3
       CMD,id=124,power_vent=0|1
       CMD,id=125,scheduled=0|1
 */
@@ -182,7 +182,7 @@ void handleCommandLine(const String& line) {
 
   if (line.indexOf("level=") > -1) {
     int val = line.substring(line.indexOf("level=") + 6).toInt();
-    if (val >= 0 && val <= 2) {
+    if (val >= 0 && val <= 3) {
       // If we are already at the target level and manual mode is active, apply instantly
       if (stat.scheduled == 0 && stat.level == val) {
         Serial1.print("ACK,id=");
@@ -273,6 +273,16 @@ void receiveEvent(int howMany) {
 
   if (howMany == 7 && data[0] == 0xe3 && data[1] == 0x20) {
     byte reg = data[3];
+    // Direct fan stage actual-value registers broadcast by HVAC motherboard
+    if (reg == 0x02 || reg == 0x05 || reg == 0x69 || reg == 0x6d) {
+      int16_t fanStage = (int16_t)((data[4] << 8) + data[5]);
+      if (fanStage >= 0 && fanStage <= 3) {
+        if (fanStage != stat.level) {
+          stat.level = (int8_t)fanStage;
+          stat_changed |= CHANGED_LEVEL;
+        }
+      }
+    }
     if (reg < MAX_REG) {
       byte idx = registers[reg];
       if (idx) {
@@ -283,7 +293,7 @@ void receiveEvent(int howMany) {
     }
   }
 
-  if (howMany == 28) {
+  if (howMany == 28 && data[0] == 0xf7 && data[1] == 0x20) {
     int8_t power_vent = (bool)(data[26] & 0x01);
     int8_t scheduled = (bool)(data[15] & 0x01);
     if (power_vent != stat.power_vent) {
@@ -295,22 +305,29 @@ void receiveEvent(int howMany) {
       stat_changed |= CHANGED_SCHEDULED;
     }
 
+    int8_t level = stat.level;
     if ((data[20] & 0x04) || (bool)(data[19] & 0x10)) {
+      // Home screen active with fan digit
       byte digit = data[8];
-      int8_t level;
       if (digit == DIGIT_1) {
         level = 1;
       } else if (digit == DIGIT_2) {
         level = 2;
       } else if (digit == DIGIT_3) {
         level = 3;
-      } else {
-        level = 0;
       }
-      if (level != stat.level) {
-        stat.level = level;
-        stat_changed |= CHANGED_LEVEL;
-      }
+      // If digit is unrecognised or transition frame, preserve stat.level
+    } else if ((data[12] & 0x04) && !(data[16] & 0x10)) {
+      // Confirmed Standby state: Standby power icon is ON (data[12] & 0x04)
+      // and Fan icon is OFF (!(data[16] & 0x10))
+      level = 0;
+    }
+    // Intermediate transition/menu/blank frames preserve current stat.level
+    // to avoid false Level 0 overwrites during adjustments
+
+    if (level != stat.level && level >= 0) {
+      stat.level = level;
+      stat_changed |= CHANGED_LEVEL;
     }
   }
 }
@@ -368,8 +385,8 @@ bool controlConverged() {
 }
 
 void loop() {
-  uint32_t now = millis();
   processSerialInput();
+  uint32_t now = millis();
 
   if (now - lastMeasurementFlush >= MEASUREMENT_INTERVAL) {
     lastMeasurementFlush = now;
@@ -387,7 +404,7 @@ void loop() {
       target_level = -1;
       set_scheduled = false;
       ackPending(true, "applied");
-    } else if ((now - pending.start) > CMD_TIMEOUT_MS || pending.attempts >= CMD_MAX_ATTEMPTS) {
+    } else if ((now >= pending.start && (now - pending.start) > CMD_TIMEOUT_MS) || pending.attempts >= CMD_MAX_ATTEMPTS) {
       target_level = -1;
       set_scheduled = false;
       ackPending(false, "timeout");
@@ -404,7 +421,11 @@ void loop() {
       } else if (target_level > stat.level) {
         code = BUTTON_UP;
       }
-      sendButton(code, 2);
+      byte count = 2;
+      if (stat.level == 0 && target_level > 0) {
+        count = 8; // Wake-up pulse burst for capacitive touch controller
+      }
+      sendButton(code, count);
       if (pending.active) {
         pending.attempts++;
       }
