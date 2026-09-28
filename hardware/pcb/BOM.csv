@@ -1,0 +1,7 @@
+Designator,Qty,Component,Footprint,Description,Manufacturer / Link
+J1,1,4-Pin Screw Terminal,Pitch 5.08mm Printklemme,Stiebel Eltron LWZ 180 Bus Connector,KF301-4P / Phoenix Contact
+U1,1,ISO1540 Breakout,2x4 Pin Header Female 2.54mm,Galvanischer I2C Isolator,Adafruit 4754 / SparkFun Qwiic
+U2,1,Arduino Micro,2x17 Pin Header Female 2.54mm,ATmega32U4 Stiebel Bus Master/Decoder,Original Arduino Micro / Pro Micro compatible
+U3,1,4-Ch Logic Level Shifter,2x6 Pin Header Female 2.54mm,BSS138 3.3V <-> 5V Bi-directional,Standard 4-Ch I2C/UART Shifter
+U4,1,ESP32 DevKit V1,2x15 Pin Header Female 2.54mm,ESP-WROOM-32 WiFi MQTT Web OTA,NodeMCU-32S / ESP32 DevKit
+H1-H4,4,M3 Mounting Hole,3.2mm Drill 6.0mm Pad,Corner Mounting Holes for Enclosure,-
