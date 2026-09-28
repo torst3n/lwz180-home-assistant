@@ -140,7 +140,7 @@ All sensors are fully compatible with Home Assistant's long-term historical stat
 * ⏳ **Filter Life Remaining** (`h`)
 
 ### System Controls (Read/Write)
-* ⚙️ **Ventilation Level** (`0`, `1`, `2`): Number selector to control fan speeds.
+* ⚙️ **Ventilation Level** (`0`, `1`, `2`, `3`): Number selector to control fan speeds.
 * ⚡ **Power Venting** (`0` / `1`): Toggle switch to force temporary maximum venting.
 * 📅 **Scheduled Mode** (`0` / `1`): Toggle switch to activate/deactivate internal unit timer programs.
 
